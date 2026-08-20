@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NESCO Electricity Bill Checker & Tariff Analytics</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts for Bengali & English -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            nesco: {
+              green: '#00875A',
+              darkgreen: '#005C3D',
+              lightgreen: '#E6F4EA',
+              red: '#DE350B',
+              navy: '#0C2340',
+              accent: '#36B37E',
+              gold: '#FFAB00',
+              logoN: '#e71e26', // Custom Color for 'N'
+              logoEsco: '#963698' // Custom Color for 'ESCO'
+            }
+          },
+          fontFamily: {
+            sans: ['Hind Siliguri', 'Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Hind Siliguri', 'Inter', sans-serif;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; color: black !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- Header / Navigation -->
+  <header class="bg-nesco-navy text-white shadow-lg sticky top-0 z-50 border-b-4 border-nesco-green">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3 space-x-reverse cursor-pointer" onclick="switchTab('calculator')">
+          <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-nesco-green font-bold text-xl shadow-md border-2 border-nesco-green">
+            <i data-lucide="zap" class="w-7 h-7 text-nesco-green fill-current"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xl sm:text-2xl font-bold tracking-tight bg-white px-2 py-0.5 rounded shadow-sm">
+                <span class="text-nesco-logoN">N</span><span class="text-nesco-logoEsco">ESCO</span>
+              </span>
+              <span class="bg-nesco-green text-xs font-semibold px-2 py-0.5 rounded text-white uppercase">PLC</span>
+            </div>
+            <p class="text-xs text-emerald-300 font-medium mt-1">Electricity Bill Portal & Engineering Analytics</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="hidden md:flex space-x-1 lg:space-x-2 space-x-reverse">
+          <button onclick="switchTab('calculator')" id="nav-calculator" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 bg-nesco-green text-white shadow">
+            <i data-lucide="calculator" class="w-4 h-4"></i> বিল ক্যালকুলেটর
+          </button>
+          <button onclick="switchTab('appliances')" id="nav-appliances" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-white/10 transition">
+            <i data-lucide="cpu" class="w-4 h-4"></i> লোড হিসাব
+          </button>
+          <button onclick="switchTab('tariffs')" id="nav-tariffs" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-white/10 transition">
+            <i data-lucide="table" class="w-4 h-4"></i> ট্যারিফ চার্ট
+          </button>
+        </nav>
+
+        <!-- Right Action Controls -->
+        <div class="flex items-center space-x-3">
+          <button onclick="toggleDarkMode()" class="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition" title="ডার্ক/লাইট মোড">
+            <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Bar -->
+    <div class="md:hidden flex overflow-x-auto bg-slate-900 border-t border-slate-800 p-2 space-x-2">
+      <button onclick="switchTab('calculator')" id="mob-calculator" class="flex-1 py-2 px-3 text-xs text-center font-medium rounded text-white bg-nesco-green whitespace-nowrap">
+        ক্যালকুলেটর
+      </button>
+      <button onclick="switchTab('appliances')" id="mob-appliances" class="flex-1 py-2 px-3 text-xs text-center font-medium rounded text-slate-300 whitespace-nowrap bg-slate-800">
+        লোড হিসাব
+      </button>
+      <button onclick="switchTab('tariffs')" id="mob-tariffs" class="flex-1 py-2 px-3 text-xs text-center font-medium rounded text-slate-300 whitespace-nowrap bg-slate-800">
+        ট্যারিফ রেট
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Notice Banner -->
+    <div class="mb-6 p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 flex items-start gap-3">
+      <i data-lucide="info" class="w-6 h-6 text-nesco-green flex-shrink-0 mt-0.5"></i>
+      <div class="text-sm text-slate-700 dark:text-slate-300">
+        <strong class="font-bold text-nesco-green">নলেজ হাব ও তথ্য:</strong> নর্থ ইলেকট্রো সাপ্লাই কোম্পানি পিএলসি (NESCO) এর বাংলাদেশ এনার্জি রেগুলেটরি কমিশন (BERC) কর্তৃক জুন ২০২৬-এ সংশোধিত সর্বশেষ বিদ্যুৎ ট্যারিফ কাঠামো অনুযায়ী স্বয়ংক্রিয় এনালাইসিস। 
+      </div>
+    </div>
+
+    <!-- TAB 2: ADVANCED BILL CALCULATOR & GRAPHICAL ANALYTICS -->
+    <section id="tab-calculator" class="tab-content space-y-8">
+      
+      <!-- Calculator Input Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Input Form -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-200 dark:border-slate-700 space-y-4">
+          <div class="border-b pb-3 border-slate-200 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="sliders" class="text-nesco-green"></i> ইনপুট প্যারামিটারসমূহ
+            </h3>
+            <p class="text-xs text-slate-500">আপনার মিটার ও বিদ্যুৎ ব্যবহারের তথ্য দিন</p>
+          </div>
+
+          <!-- Tariff Category Selection -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">গ্রাহকের শুল্ক শ্রেণী (Tariff Category)</label>
+            <select id="calc-category" onchange="calculateNescoBill()" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-nesco-green outline-none text-sm font-medium">
+              <option value="LT-A">LT-A: আবাসিক (Residential)</option>
+              <option value="LT-B">LT-B: সেচ / কৃষি কাজ (Irrigation/Agriculture)</option>
+              <option value="LT-C1">LT-C1: ক্ষুদ্র শিল্প (Small Industry)</option>
+              <option value="LT-E">LT-E: বাণিজ্যিক ও অফিস (Commercial & Office)</option>
+              <option value="LT-T">LT-T: অস্থায়ী সংযোগ (Temporary)</option>
+            </select>
+          </div>
+
+          <!-- Unit Input -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">ব্যবহৃত ইউনিট (kWh)</label>
+              <span id="unit-badge" class="text-xs font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded">250 kWh</span>
+            </div>
+            <input type="number" id="calc-units" value="250" min="0" step="1" oninput="syncUnitSlider(this.value); calculateNescoBill();" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-nesco-green outline-none text-sm font-bold font-mono">
+            <input type="range" id="calc-unit-slider" min="0" max="1000" value="250" oninput="syncUnitInput(this.value); calculateNescoBill();" class="w-full mt-2 accent-nesco-green cursor-pointer">
+          </div>
+
+          <!-- Sanctioned Load -->
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                অনুমোদিত লোড (kW) <span id="dynamic-demand-rate" class="text-nesco-green ml-1 bg-nesco-lightgreen dark:bg-emerald-900/40 px-1.5 py-0.5 rounded text-[10px]">@ ৳ 42/kW</span>
+              </label>
+              <input type="number" id="calc-load" value="2.0" min="0.5" step="0.5" oninput="calculateNescoBill()" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-nesco-green outline-none text-sm font-mono">
+            </div>
+          </div>
+
+          <!-- Calculated Quick Summary Box -->
+          <div class="bg-gradient-to-br from-slate-900 to-nesco-navy text-white rounded-xl p-4 shadow-inner mt-4">
+            <span class="text-[11px] text-emerald-400 uppercase tracking-wider font-semibold">আনুমানিক সর্বমোট প্রস্তুত বিল</span>
+            <div class="text-3xl font-extrabold text-amber-400 mt-1">৳ <span id="calc-grand-total">0.00</span></div>
+          </div>
+        </div>
+
+        <!-- Analytics & Graphical Charts -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <!-- Charts Section Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Donut Chart: Cost Breakdown -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i> বিল খরচের উপাদান বিন্যাস
+              </h4>
+              <p class="text-xs text-slate-500 mb-3">মোট বিলে কোন খাতের অবদান কতখানি</p>
+              <div class="h-56 relative flex items-center justify-center">
+                <canvas id="costBreakdownChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Bar Chart: Slab Wise Analysis -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 text-blue-500"></i> স্ল্যাবভিত্তিক ইউনিট ও খরচ
+              </h4>
+              <p class="text-xs text-slate-500 mb-3">বিভিন্ন ধাপে ব্যবহৃত ইউনিটের পরিমাণ</p>
+              <div class="h-56 relative flex items-center justify-center">
+                <canvas id="slabBarChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slab Calculation Detailed Breakdown Table -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+            <h4 class="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+              <i data-lucide="layers" class="text-nesco-green"></i> ধাপভিত্তিক (Slab-wise) বিদ্যুৎ চার্জের বিস্তারিত হিসাব
+            </h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-600">
+                    <th class="p-2.5">ধাপ / স্ল্যাব (Slab)</th>
+                    <th class="p-2.5">ইউনিট সীমা (kWh)</th>
+                    <th class="p-2.5 text-center">একক দর (৳/kWh)</th>
+                    <th class="p-2.5 text-center">আপনার ব্যবহৃত ইউনিট</th>
+                    <th class="p-2.5 text-right">মোট চার্জ (৳)</th>
+                  </tr>
+                </thead>
+                <tbody id="slab-breakdown-rows" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projection & Monthly Simulation -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+          <div>
+            <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="text-indigo-500"></i> ঋতুভিত্তিক ব্যবহার ও বিলের পূর্বাভাস (Seasonal Trend Simulation)
+            </h4>
+            <p class="text-xs text-slate-500">গ্রীষ্ম ও শীতকালে একই পরিবারে বিদ্যুৎ খরচের তারতম্য বিশ্লেষণ</p>
+          </div>
+        </div>
+        <div class="h-64 relative">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: APPLIANCE LOAD CALCULATOR -->
+    <section id="tab-appliances" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="cpu" class="text-nesco-green"></i> গৃহস্থালি ইলেকট্রনিক্স লোড ও ইউনিট ক্যালকুলেটর
+            </h2>
+            <p class="text-xs text-slate-500">আপনার বাসাবাড়ির ডিভাইসগুলোর চালনার সময় অনুযায়ী মাসিক ইউনিট পূর্বাভাস হিসাব করুন</p>
+          </div>
+          <button onclick="resetApplianceList()" class="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-semibold flex items-center gap-1 border border-rose-200 dark:border-rose-800">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> রিসেট
+          </button>
+        </div>
+
+        <!-- Appliance Grid Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold border-b dark:border-slate-600">
+                <th class="p-3">সরঞ্জামের নাম</th>
+                <th class="p-3 text-center">সংখ্যা (Qty)</th>
+                <th class="p-3 text-center">ওয়াট (Watt)</th>
+                <th class="p-3 text-center">দৈনিক ব্যবহার (ঘণ্টা)</th>
+                <th class="p-3 text-center">দৈনিক ইউনিট (kWh)</th>
+                <th class="p-3 text-right">মাসিক ইউনিট (৩০ দিন)</th>
+              </tr>
+            </thead>
+            <tbody id="appliance-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <!-- Populated dynamic rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Load Estimation Summary -->
+        <div class="mt-6 p-5 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <span class="text-xs text-emerald-400 font-semibold">আনুমানিক সর্বমোট লোড ও ইউনিট:</span>
+            <div class="text-2xl font-bold mt-0.5">
+              <span id="appliance-total-watt" class="text-amber-300 font-mono">0</span> Watts | 
+              <span id="appliance-total-units" class="text-emerald-400 font-mono">0</span> kWh / মাস
+            </div>
+          </div>
+          <button onclick="applyApplianceUnitsToCalc()" class="bg-nesco-green hover:bg-nesco-darkgreen text-white font-bold px-5 py-2.5 rounded-lg text-xs flex items-center gap-2 transition shadow">
+            <i data-lucide="arrow-right-circle" class="w-4 h-4"></i> এই ইউনিট দিয়ে বিল ক্যালকুলেট করুন
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: TARIFF SCHEDULE & COMPARISON TABLE -->
+    <section id="tab-tariffs" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+        <div class="mb-6">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="table" class="text-nesco-green"></i> নেস্কো (NESCO) বিইআরসি শুল্ক তালিকা ও বিশ্লেষণ
+          </h2>
+          <p class="text-xs text-slate-500">বাংলাদেশ এনার্জি রেগুলেটরি কমিশন কর্তৃক অনুমোদিত খুচরা বিদ্যুৎ মূল্যহার (প্রতি kWh টাকা)</p>
+        </div>
+
+        <!-- Master Tariff Comparison Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-700">
+            <thead class="bg-nesco-navy text-white font-bold">
+              <tr>
+                <th class="p-3 border-r border-slate-700">ট্যারিফ শ্রেণী</th>
+                <th class="p-3 border-r border-slate-700">ধাপ / স্ল্যাব (Units)</th>
+                <th class="p-3 border-r border-slate-700 text-center">বর্তমান দর (৳/kWh)</th>
+                <th class="p-3 border-r border-slate-700 text-center">ডিমান্ড চার্জ (৳/kW/মাস)</th>
+                <th class="p-3">মন্তব্য / বিশেষ নিয়ম</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
+              <!-- Residential LT-A -->
+              <tr class="bg-emerald-500/5 font-semibold">
+                <td rowspan="7" class="p-3 border-r border-slate-200 dark:border-slate-700 font-bold text-nesco-green">
+                  LT-A: আবাসিক
+                </td>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">লাইফলাইন (০-৫০ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold text-emerald-600 border-r border-slate-200 dark:border-slate-700">৳ ৪.৬৩</td>
+                <td rowspan="7" class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৪২.০০</td>
+                <td class="p-2.5 text-slate-500">দরিদ্র ও অতি ক্ষুদ্র গ্রাহক (সংশোধিত)</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">১ম ধাপ (০-৭৫ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৫.২৬</td>
+                <td class="p-2.5 text-slate-500">সাধারণ আবাসিক নিম্নধাপ (সংশোধিত)</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">২য় ধাপ (৭৬-২০০ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৮.৫০</td>
+                <td class="p-2.5 text-slate-500">মধ্যম ব্যবহারকারী</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">৩য় ধাপ (২০১-৩০০ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৯.১০</td>
+                <td class="p-2.5 text-slate-500">উচ্চ মধ্যম</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">৪র্থ ধাপ (৩০১-৪০০ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৯.৬২</td>
+                <td class="p-2.5 text-slate-500">উচ্চ ব্যবহার</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">৫ম ধাপ (৪০১-৬০০ ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ১৫.০১</td>
+                <td class="p-2.5 text-slate-500">উচ্চ শুল্ক স্তর</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">৬ষ্ঠ ধাপ (৬০০ ইউনিটের ঊর্ধ্বে)</td>
+                <td class="p-2.5 text-center font-bold text-rose-600 border-r border-slate-200 dark:border-slate-700">৳ ১৭.৩৫</td>
+                <td class="p-2.5 text-slate-500">সর্বোচ্চ শুল্ক স্তর</td>
+              </tr>
+
+              <!-- Agriculture LT-B -->
+              <tr class="bg-slate-50 dark:bg-slate-900/40">
+                <td class="p-3 border-r border-slate-200 dark:border-slate-700 font-bold">LT-B: সেচ ও কৃষি</td>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">ফ্ল্যাট রেট (সকল ইউনিট)</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৬.০৪</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৪২.০০</td>
+                <td class="p-2.5 text-slate-500">কৃষি পাম্প সংযোগের জন্য রেট</td>
+              </tr>
+
+              <!-- Small Industry LT-C1 -->
+              <tr>
+                <td class="p-3 border-r border-slate-200 dark:border-slate-700 font-bold">LT-C1: ক্ষুদ্র শিল্প</td>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">ফ্ল্যাট রেট</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ১২.৭৩</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৪৮.০০</td>
+                <td class="p-2.5 text-slate-500">ওয়ার্কশপ, রাইস মিল ইত্যাদি</td>
+              </tr>
+
+              <!-- Commercial LT-E -->
+              <tr class="bg-slate-50 dark:bg-slate-900/40">
+                <td class="p-3 border-r border-slate-200 dark:border-slate-700 font-bold">LT-E: বাণিজ্যিক ও অফিস</td>
+                <td class="p-2.5 border-r border-slate-200 dark:border-slate-700">ফ্ল্যাট রেট</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ১৫.৩৬</td>
+                <td class="p-2.5 text-center font-bold border-r border-slate-200 dark:border-slate-700">৳ ৯০.০০</td>
+                <td class="p-2.5 text-slate-500">দোকান, মার্কেট, বাণিজ্যিক ভবন</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-nesco-navy text-slate-400 py-6 border-t border-slate-800 text-xs no-print">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+      <div>
+        <p class="font-bold text-white text-sm">Northern Electricity Supply Company PLC (NESCO)</p>
+        <p class="mt-0.5">ডাইনামিক বিল অ্যানালিটিক্স টুল by নাসিম বিন জসিম , নির্বাহী প্রকৌশলী , নেসকো</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>হেল্পলাইন: <strong class="text-emerald-400">16603</strong></span>
+        <span>|</span>
+        <span>ইমেইল: nasim.nesco@gmail.com</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // Global Constants for NESCO Tariffs (Updated exactly as per BERC June 2026 Tariff Order & Press Release)
+    const TARIFF_RATES = {
+      'LT-A': [
+        { min: 0, max: 50, rate: 4.63, isLifeline: true },  // Reverted by Press Release
+        { min: 0, max: 75, rate: 5.26 },                  // Reverted by Press Release
+        { min: 76, max: 200, rate: 8.50 },
+        { min: 201, max: 300, rate: 9.10 },
+        { min: 301, max: 400, rate: 9.62 },
+        { min: 401, max: 600, rate: 15.01 },
+        { min: 601, max: Infinity, rate: 17.35 }
+      ],
+      'LT-B': [{ min: 0, max: Infinity, rate: 6.04 }],
+      'LT-C1': [{ min: 0, max: Infinity, rate: 12.73 }],
+      'LT-E': [{ min: 0, max: Infinity, rate: 15.36 }],
+      'LT-T': [{ min: 0, max: Infinity, rate: 23.81 }]
+    };
+
+    const DEMAND_CHARGES = {
+      'LT-A': 42.00,
+      'LT-B': 42.00,
+      'LT-C1': 48.00,
+      'LT-E': 90.00,
+      'LT-T': 120.00
+    };
+
+    // Appliances List for Load Calculator
+    const DEFAULT_APPLIANCES = [
+      { name: 'সিএফল / এলইডি লাইট', watt: 20, qty: 5, hours: 6 },
+      { name: 'সিয়লিং ফ্যান (Ceiling Fan)', watt: 75, qty: 4, hours: 10 },
+      { name: 'রেফ্রিজারেটর (ফ্রিজ)', watt: 150, qty: 1, hours: 24 },
+      { name: 'এয়ার কন্ডিশনার (1.5 Ton AC)', watt: 1500, qty: 1, hours: 6 },
+      { name: 'এলইডি টিভি (LED TV)', watt: 60, qty: 1, hours: 5 },
+      { name: 'পানি তোলার পাম্প (Water Pump)', watt: 750, qty: 1, hours: 1 }
+    ];
+
+    // Chart instances
+    let costBreakdownChartInstance = null;
+    let slabBarChartInstance = null;
+    let trendChartInstance = null;
+
+    // Initialize Page
+    window.onload = function() {
+      lucide.createIcons();
+      renderApplianceTable();
+      calculateNescoBill();
+      initTrendChart();
+    };
+
+    // Tab Switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      // Desktop Button highlight
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-nesco-green', 'text-white', 'shadow');
+        btn.classList.add('hover:bg-white/10');
+      });
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if(activeNav) {
+        activeNav.classList.add('bg-nesco-green', 'text-white', 'shadow');
+        activeNav.classList.remove('hover:bg-white/10');
+      }
+
+      // Mobile button highlight
+      document.querySelectorAll('[id^="mob-"]').forEach(btn => {
+        btn.classList.remove('bg-nesco-green', 'text-white');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      const activeMob = document.getElementById(`mob-${tabId}`);
+      if(activeMob) {
+        activeMob.classList.add('bg-nesco-green', 'text-white');
+        activeMob.classList.remove('bg-slate-800', 'text-slate-300');
+      }
+
+      // Refresh Chart renders on tab view
+      if(tabId === 'calculator') {
+        setTimeout(calculateNescoBill, 50);
+      }
+    }
+
+    // Synchronize Input & Slider
+    function syncUnitSlider(val) {
+      document.getElementById('calc-unit-slider').value = val;
+      document.getElementById('unit-badge').innerText = `${val} kWh`;
+    }
+    function syncUnitInput(val) {
+      document.getElementById('calc-units').value = val;
+      document.getElementById('unit-badge').innerText = `${val} kWh`;
+    }
+
+    // MAIN BILL CALCULATION ENGINE
+    function calculateNescoBill() {
+      const category = document.getElementById('calc-category').value;
+      const units = parseFloat(document.getElementById('calc-units').value) || 0;
+      const load = parseFloat(document.getElementById('calc-load').value) || 1.0;
+      
+      let energyCharge = 0;
+      let slabBreakdownHTML = '';
+      let slabLabels = [];
+      let slabData = [];
+
+      if (category === 'LT-A') {
+        // Auto-detect Lifeline (0-50 units)
+        if (units <= 50 && units > 0) {
+          const rate = TARIFF_RATES['LT-A'][0].rate; // 4.63
+          energyCharge = units * rate;
+          slabBreakdownHTML = `
+            <tr class="bg-emerald-50 dark:bg-emerald-950/20 font-medium">
+              <td class="p-2.5 text-nesco-green font-bold">লাইফলাইন</td>
+              <td class="p-2.5">০ - ৫০</td>
+              <td class="p-2.5 text-center font-mono">৳ ${rate.toFixed(2)}</td>
+              <td class="p-2.5 text-center font-mono font-bold text-nesco-green">${units} kWh</td>
+              <td class="p-2.5 text-right font-mono">৳ ${energyCharge.toFixed(2)}</td>
+            </tr>
+          `;
+          slabLabels.push('০-৫০ Lifeline');
+          slabData.push(energyCharge);
+        } else {
+          // Standard Stepwise Calculation for units > 50
+          const slabs = [
+            { name: '১ম ধাপ', min: 0, max: 75, rate: TARIFF_RATES['LT-A'][1].rate },
+            { name: '২য় ধাপ', min: 76, max: 200, rate: TARIFF_RATES['LT-A'][2].rate },
+            { name: '৩য় ধাপ', min: 201, max: 300, rate: TARIFF_RATES['LT-A'][3].rate },
+            { name: '৪র্থ ধাপ', min: 301, max: 400, rate: TARIFF_RATES['LT-A'][4].rate },
+            { name: '৫ম ধাপ', min: 401, max: 600, rate: TARIFF_RATES['LT-A'][5].rate },
+            { name: '৬ষ্ঠ ধাপ', min: 601, max: Infinity, rate: TARIFF_RATES['LT-A'][6].rate }
+          ];
+
+          let remainingUnits = units;
+
+          slabs.forEach(s => {
+            let unitsInSlab = 0;
+            if (s.min === 0) {
+              unitsInSlab = Math.min(units, 75);
+            } else if (units > s.min - 1) {
+              const slabCapacity = (s.max === Infinity) ? Infinity : (s.max - s.min + 1);
+              unitsInSlab = Math.min(units - (s.min - 1), slabCapacity);
+            }
+
+            if (unitsInSlab > 0) {
+              const cost = unitsInSlab * s.rate;
+              energyCharge += cost;
+              slabLabels.push(s.name);
+              slabData.push(cost);
+
+              slabBreakdownHTML += `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                  <td class="p-2.5 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
+                  <td class="p-2.5">${s.min} - ${s.max === Infinity ? 'উর্ধ্ব' : s.max}</td>
+                  <td class="p-2.5 text-center font-mono">৳ ${s.rate.toFixed(2)}</td>
+                  <td class="p-2.5 text-center font-mono font-bold text-nesco-green">${unitsInSlab} kWh</td>
+                  <td class="p-2.5 text-right font-mono font-semibold">৳ ${cost.toFixed(2)}</td>
+                </tr>
+              `;
+            }
+          });
+        }
+      } else {
+        // Flat rate categories
+        const rate = TARIFF_RATES[category][0].rate;
+        energyCharge = units * rate;
+        slabLabels.push('ফ্ল্যাট ট্যারিফ');
+        slabData.push(energyCharge);
+        slabBreakdownHTML = `
+          <tr class="bg-emerald-50 dark:bg-emerald-950/20">
+            <td class="p-2.5 font-bold">${category} ফ্ল্যাট রেট</td>
+            <td class="p-2.5">সকল ইউনিট</td>
+            <td class="p-2.5 text-center font-mono">৳ ${rate.toFixed(2)}</td>
+            <td class="p-2.5 text-center font-mono font-bold text-nesco-green">${units} kWh</td>
+            <td class="p-2.5 text-right font-mono">৳ ${energyCharge.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+
+      // Other Fixed Charges (Demand charges reverted to old rates as per directive)
+      const demandRate = DEMAND_CHARGES[category] || 42.00;
+      const demandCharge = load * demandRate;
+      
+      // Update Demand Rate Badge UI dynamically
+      const demandRateBadge = document.getElementById('dynamic-demand-rate');
+      if (demandRateBadge) demandRateBadge.innerText = `@ ৳ ${demandRate}/kW`;
+
+      let subtotal = energyCharge + demandCharge;
+
+      const vat = subtotal * 0.05; // 5% VAT
+      const grandTotal = subtotal + vat; // মিটার ভাড়া সম্পূর্ণ বাদ
+
+      // Append Detailed Breakdown Summaries to Table
+      slabBreakdownHTML += `
+        <tr class="bg-slate-100 dark:bg-slate-700/60 font-bold border-t-2 border-slate-200 dark:border-slate-600">
+          <td colspan="4" class="p-2.5 text-right text-slate-800 dark:text-slate-200">মোট এনার্জি চার্জ:</td>
+          <td class="p-2.5 text-right font-mono text-slate-800 dark:text-slate-200">৳ ${energyCharge.toFixed(2)}</td>
+        </tr>
+        <tr class="bg-amber-50 dark:bg-amber-900/10">
+          <td colspan="4" class="p-2.5 text-right text-slate-700 dark:text-slate-300">ডিমান্ড চার্জ (${load} kW × ৳ ${demandRate}):</td>
+          <td class="p-2.5 text-right font-mono text-amber-600 dark:text-amber-400 font-bold">৳ ${demandCharge.toFixed(2)}</td>
+        </tr>
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <td colspan="4" class="p-2.5 text-right text-slate-600 dark:text-slate-400">ভ্যাট (৫%):</td>
+          <td class="p-2.5 text-right font-mono text-rose-500 dark:text-rose-400 font-bold">৳ ${vat.toFixed(2)}</td>
+        </tr>
+        <tr class="bg-emerald-100 dark:bg-emerald-900/40 font-extrabold text-nesco-darkgreen dark:text-emerald-300 border-t-2 border-nesco-green dark:border-emerald-600">
+          <td colspan="4" class="p-2.5 text-right text-base">মোট বিল:</td>
+          <td class="p-2.5 text-right font-mono text-base text-nesco-darkgreen dark:text-emerald-300">৳ ${grandTotal.toFixed(2)}</td>
+        </tr>
+      `;
+
+      document.getElementById('slab-breakdown-rows').innerHTML = slabBreakdownHTML;
+
+      // Update DOM Text
+      document.getElementById('calc-grand-total').innerText = grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      // Update Graphical Charts (Without Meter Rent)
+      renderCostBreakdownChart(energyCharge, demandCharge, vat);
+      renderSlabBarChart(slabLabels, slabData);
+    }
+
+    // CHART 1: DONUT CHART FOR COST BREAKDOWN
+    function renderCostBreakdownChart(energy, demand, vat) {
+      const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+      if (costBreakdownChartInstance) {
+        costBreakdownChartInstance.destroy();
+      }
+
+      costBreakdownChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['এনার্জি চার্জ', 'ডিমান্ড চার্জ', 'ভ্যাট (5%)'],
+          datasets: [{
+            data: [energy, demand, vat],
+            backgroundColor: ['#00875A', '#36B37E', '#DE350B'],
+            borderWidth: 2,
+            borderColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                font: { family: 'Hind Siliguri', size: 11 },
+                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // CHART 2: BAR CHART FOR SLAB COSTS
+    function renderSlabBarChart(labels, data) {
+      const ctx = document.getElementById('slabBarChart').getContext('2d');
+      if (slabBarChartInstance) {
+        slabBarChartInstance.destroy();
+      }
+
+      slabBarChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'খরচ (৳)',
+            data: data,
+            backgroundColor: '#00875A',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(150, 150, 150, 0.1)' },
+              ticks: { color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155' }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // CHART 3: TREND LINE SIMULATION
+    function initTrendChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          datasets: [
+            {
+              label: 'গ্রীষ্মকাল (Peak Season)',
+              data: [180, 210, 320, 450, 480, 510, 490, 470, 410, 330, 220, 190],
+              borderColor: '#DE350B',
+              backgroundColor: 'rgba(222, 53, 11, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'শীতকাল / সাধারণ (Off-Peak)',
+              data: [120, 130, 160, 220, 250, 260, 250, 240, 210, 180, 140, 120],
+              borderColor: '#00875A',
+              backgroundColor: 'rgba(0, 135, 90, 0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155' }
+            }
+          },
+          scales: {
+            y: {
+              grid: { color: 'rgba(150, 150, 150, 0.1)' },
+              ticks: { color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155' }
+            },
+            x: {
+              ticks: { color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155' }
+            }
+          }
+        }
+      });
+    }
+
+    // APPLIANCE LOAD CALCULATOR FUNCTIONS
+    let appliances = [...DEFAULT_APPLIANCES];
+
+    function renderApplianceTable() {
+      const tbody = document.getElementById('appliance-table-body');
+      tbody.innerHTML = '';
+
+      let totalWatt = 0;
+      let totalMonthlyUnits = 0;
+
+      appliances.forEach((item, index) => {
+        const dailyKwh = (item.watt * item.qty * item.hours) / 1000;
+        const monthlyKwh = dailyKwh * 30;
+
+        totalWatt += (item.watt * item.qty);
+        totalMonthlyUnits += monthlyKwh;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+            <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${item.name}</td>
+            <td class="p-3 text-center">
+              <input type="number" min="0" value="${item.qty}" onchange="updateAppliance(${index}, 'qty', this.value)" class="w-16 p-1 text-center rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-900 font-mono">
+            </td>
+            <td class="p-3 text-center font-mono">${item.watt} W</td>
+            <td class="p-3 text-center">
+              <input type="number" min="0" max="24" value="${item.hours}" onchange="updateAppliance(${index}, 'hours', this.value)" class="w-16 p-1 text-center rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-900 font-mono">
+            </td>
+            <td class="p-3 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">${dailyKwh.toFixed(2)} kWh</td>
+            <td class="p-3 text-right font-mono font-bold text-nesco-green">${monthlyKwh.toFixed(1)} kWh</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('appliance-total-watt').innerText = totalWatt.toLocaleString();
+      document.getElementById('appliance-total-units').innerText = Math.round(totalMonthlyUnits).toLocaleString();
+    }
+
+    function updateAppliance(index, field, val) {
+      appliances[index][field] = parseFloat(val) || 0;
+      renderApplianceTable();
+    }
+
+    function resetApplianceList() {
+      appliances = JSON.parse(JSON.stringify(DEFAULT_APPLIANCES));
+      renderApplianceTable();
+    }
+
+    function applyApplianceUnitsToCalc() {
+      const totalUnits = parseInt(document.getElementById('appliance-total-units').innerText.replace(/,/g, '')) || 0;
+      switchTab('calculator');
+      syncUnitInput(totalUnits);
+      syncUnitSlider(totalUnits);
+      calculateNescoBill();
+    }
+
+    // DARK MODE TOGGLE
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      const icon = document.getElementById('theme-icon');
+      if (isDark) {
+        icon.setAttribute('data-lucide', 'sun');
+      } else {
+        icon.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+      // Re-calculate to update chart label colors
+      calculateNescoBill();
+      initTrendChart();
+    }
+  </script>
+</body>
+</html>
