@@ -1,0 +1,11 @@
+{
+  "name": "nesco-bill-checker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NESCO Electricity Bill Checker & Tariff Analytics",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site — no build step required'",
+    "start": "npx serve ."
+  }
+}
